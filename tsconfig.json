@@ -8,12 +8,8 @@
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
-    "target": "es5",
+    "target": "es2020", // 💡 Обновлено: ES5 слишком устарел для современного Node.js. Используем ES2020, что позволит использовать асинхронные возможности.
     "types": [],
-    // For nodejs:
-    // "lib": ["esnext"],
-    // "types": ["node"],
-    // and npm install -D @types/node
 
     // Other Outputs
     "sourceMap": true,
@@ -29,12 +25,13 @@
     // "noPropertyAccessFromIndexSignature": true,
     //
     // Recommended Options
-    "strict":false ,
+    "strict": true, // 💡 Изменено: Включите строгий режим для максимальной безопасности типов и предотвращения распространенных ошибок.
     //    "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true
-  }
+  },
+  "include": ["src/**/*"] // Указание компилятору явно, какие файлы включать
 }
