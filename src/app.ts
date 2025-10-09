@@ -11,17 +11,20 @@ app.use(bodyParser.json());
 app.get('/', (req, res) => {
     res.status(200).send({
         status: 'OK',
-        message: 'Welcome to the API! Use /api/blogs or /api/posts.'
+        message: 'Welcome to the API! Use /blogs or /posts.'
     });
 });
 
 // роуты
-app.use('/api/blogs', blogsRouter);
-app.use('/api/posts', postsRouter);
+// Изменено: Убран префикс '/api' для соответствия тестам
+app.use('/blogs', blogsRouter);
+app.use('/posts', postsRouter);
 
 // очистка базы
-app.delete('/api/testing/all-data', (req, res) => {
+// Изменено: Убран префикс '/api' для соответствия тестам (DELETE /testing/all-data)
+app.delete('/testing/all-data', (req, res) => {
     clearAllData();
+    // Тесты ожидают статус 204
     res.sendStatus(204);
 });
 

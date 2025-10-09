@@ -1,36 +1,82 @@
-// src/handlers/blogsHandlers.ts (Предполагаемое имя файла)
-
-import { Request, Response } from 'express';
-// Предполагаем, что HttpStatus доступен по этому пути
-import { HttpStatus } from '../../types/HttpStatus';
+import { Request, Response, NextFunction } from 'express';
+import { body, validationResult, FieldValidationError } from 'express-validator';
 import { blogsRepo } from '../../repositories/blogsRepo';
-import { Blog} from "../../types/Blog"; // Тип для готового объекта Blog
+import { HttpStatus } from '../../types/HttpStatus';
+import { Blog } from "../../types/Blog";
 
-// 💡 Определение типа для входных данных блога (обязательно для типизации req.body)
 interface BlogInputModel {
     name: string;
     description: string;
     websiteUrl: string;
 }
 
+// ---
+// ## Middleware для валидации и обработки ошибок
+// ---
+
+/**
+ * Валидация полей блога (Middleware)
+ */
+export const blogValidation = [
+    // name: string, 1-15 chars
+    body('name')
+        .isString().withMessage('Name must be a string')
+        .trim()
+        .isLength({ min: 1, max: 15 }).withMessage('Name length should be 1-15 chars'),
+
+    // description: string, 1-500 chars
+    body('description')
+        .isString().withMessage('Description must be a string')
+        .trim()
+        .isLength({ min: 1, max: 500 }).withMessage('Description length should be 1-500 chars'),
+
+    // websiteUrl: string, must be a valid URL, 1-100 chars
+    body('websiteUrl')
+        .isString().withMessage('Website URL must be a string')
+        .trim()
+        .isLength({ min: 1, max: 100 }).withMessage('Website URL length should be 1-100 chars')
+        .isURL().withMessage('Website URL must be a valid URL'),
+];
+
+/**
+ * Универсальный middleware для обработки ошибок валидации (Status 400)
+ */
+export const handleValidationErrors = (req: Request, res: Response, next: NextFunction) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        const formattedErrors = errors.array().map(err => {
+            const isFieldValidationError = 'path' in err;
+
+            return {
+                field: isFieldValidationError ? (err as FieldValidationError).path : 'unknown',
+                message: err.msg,
+            };
+        });
+
+        // Убираем дубликаты по полю
+        const uniqueErrors = Array.from(
+            new Map(formattedErrors.map(e => [e.field, e])).values()
+        );
+
+        return res.status(HttpStatus.BAD_REQUEST).send({ errorsMessages: uniqueErrors });
+    }
+    next();
+};
 
 // ---
-// ## Обработчики роутов
+// ## Обработчики роутов (упрощены, т.к. валидация вынесена)
 // ---
 
 // Получить все блоги
 export const getAllBlogs = (req: Request, res: Response) => {
     const blogs = blogsRepo.getAll();
-    // Используем HttpStatus.OK
     res.status(HttpStatus.OK).send(blogs);
 };
 
 // Получить блог по ID
 export const getBlogById = (req: Request, res: Response) => {
     const blog = blogsRepo.getById(req.params.id);
-    // Используем HttpStatus.NOT_FOUND
     if (!blog) return res.sendStatus(HttpStatus.NOT_FOUND);
-    // Используем HttpStatus.OK
     res.status(HttpStatus.OK).send(blog);
 };
 
@@ -38,21 +84,7 @@ export const getBlogById = (req: Request, res: Response) => {
 export const createBlog = (req: Request<{}, {}, BlogInputModel>, res: Response) => {
     const { name, description, websiteUrl } = req.body;
 
-    // В рабочем проекте этот блок должен быть заменен middleware-валидацией (например, express-validator)
-    if (!name || !description || !websiteUrl) {
-        // Используем HttpStatus.BAD_REQUEST
-        return res.status(HttpStatus.BAD_REQUEST).send({
-            errorsMessages: [
-                {
-                    message: 'Invalid data',
-                    field: 'name/description/websiteUrl'
-                },
-            ],
-        });
-    }
-
     const newBlog = blogsRepo.create({ name, description, websiteUrl });
-    // Используем HttpStatus.CREATED
     res.status(HttpStatus.CREATED).send(newBlog);
 };
 
@@ -60,20 +92,14 @@ export const createBlog = (req: Request<{}, {}, BlogInputModel>, res: Response) 
 export const updateBlog = (req: Request<{id: string}, {}, BlogInputModel>, res: Response) => {
     const { name, description, websiteUrl } = req.body;
 
-    // В рабочем проекте также нужна валидация req.body перед обновлением.
-
     const updated = blogsRepo.update(req.params.id, { name, description, websiteUrl });
-    // Используем HttpStatus.NOT_FOUND
     if (!updated) return res.sendStatus(HttpStatus.NOT_FOUND);
-    // Используем HttpStatus.NO_CONTENT
     res.sendStatus(HttpStatus.NO_CONTENT);
 };
 
 // Удалить блог
 export const deleteBlog = (req: Request, res: Response) => {
     const deleted = blogsRepo.delete(req.params.id);
-    // Используем HttpStatus.NOT_FOUND
     if (!deleted) return res.sendStatus(HttpStatus.NOT_FOUND);
-    // Используем HttpStatus.NO_CONTENT
     res.sendStatus(HttpStatus.NO_CONTENT);
 };

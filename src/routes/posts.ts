@@ -1,5 +1,3 @@
-// src/routes/posts.ts
-
 import { Router } from 'express';
 import { basicAuth } from '../middlewares/auth';
 import {
@@ -24,7 +22,7 @@ router.get('/:id', getPostById);
 router.post(
     '/',
     basicAuth,
-    ...postValidation,
+    ...postValidation, // 👈 Правильное использование spread-оператора для массива мидлваров
     handleValidationErrors,
     createPost
 );

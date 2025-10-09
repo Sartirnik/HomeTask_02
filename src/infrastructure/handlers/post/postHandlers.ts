@@ -1,5 +1,3 @@
-// src/handlers/postsHandlers.ts
-
 import { Request, Response, NextFunction } from 'express';
 import { body, validationResult, FieldValidationError } from 'express-validator';
 import { postsRepo} from "../../repositories/postsRepo";
@@ -7,10 +5,7 @@ import { blogsRepo} from "../../repositories/blogsRepo";
 import { Post } from  "../../types/Post";
 import { HttpStatus} from "../../types/HttpStatus";
 
-/**
- * Перечисление статусов HTTP для повышения читаемости кода.
- */
-
+// --- (Валидация postValidation и handleValidationErrors остаются БЕЗ ИЗМЕНЕНИЙ) ---
 /**
  * Валидация полей поста (Middleware)
  */
@@ -50,58 +45,79 @@ export const handleValidationErrors = (req: Request, res: Response, next: NextFu
             const isFieldValidationError = 'path' in err;
 
             return {
-                // Используем 'path' для имени поля
                 field: isFieldValidationError ? (err as FieldValidationError).path : 'unknown',
                 message: err.msg,
             };
         });
 
-        // Убираем дубликаты по полю
         const uniqueErrors = Array.from(
             new Map(formattedErrors.map(e => [e.field, e])).values()
         );
 
-        // Использование HttpStatus.BAD_REQUEST
         return res.status(HttpStatus.BAD_REQUEST).send({ errorsMessages: uniqueErrors });
     }
     next();
 };
 
 // ---
-// ## Обработчики роутов
+// ## Обработчики роутов (ЛОГИКА ИЗМЕНЕНА)
 // ---
 
 export const getPosts = (req: Request, res: Response) => {
-    // Использование HttpStatus.OK
     res.status(HttpStatus.OK).send(postsRepo.getAll());
 };
 
 export const getPostById = (req: Request, res: Response) => {
     const post = postsRepo.getById(req.params.id);
-    // Использование HttpStatus.NOT_FOUND
     if (!post) return res.sendStatus(HttpStatus.NOT_FOUND);
-    // Использование HttpStatus.OK
     res.status(HttpStatus.OK).send(post);
 };
 
 export const createPost = (req: Request<{}, {}, Post>, res: Response) => {
-    const newPost = postsRepo.create(req.body);
-    // Использование HttpStatus.CREATED
+    const { title, shortDescription, content, blogId } = req.body;
+
+    // 💡 1. Находим блог, чтобы получить blogName (валидатор уже проверил, что он существует)
+    const blog = blogsRepo.getById(blogId);
+
+    // Эта проверка нужна, чтобы TypeScript знал, что blog существует.
+    if (!blog) return res.sendStatus(HttpStatus.NOT_FOUND);
+
+    // 💡 2. Формируем полную модель поста, включая blogName
+    const postDataToCreate = {
+        title,
+        shortDescription,
+        content,
+        blogId,
+        blogName: blog.name // 👈 ДОБАВЛЕНО
+    };
+
+    const newPost = postsRepo.create(postDataToCreate);
     res.status(HttpStatus.CREATED).send(newPost);
 };
 
 export const updatePost = (req: Request<{id: string}, {}, Post>, res: Response) => {
-    const updated = postsRepo.update(req.params.id, req.body);
-    // Использование HttpStatus.NOT_FOUND
+    const { title, shortDescription, content, blogId } = req.body;
+
+    let blogName = req.body.blogName; // Начинаем с того, что пришло в теле запроса
+
+    // 💡 1. Если в запросе есть blogId, мы должны убедиться, что blogName соответствует
+    // (и что blogId валиден, что уже проверено middleware)
+    if (blogId) {
+        const blog = blogsRepo.getById(blogId);
+        if (blog) {
+            blogName = blog.name; // Заменяем blogName на актуальное из репозитория
+        }
+    }
+
+    const postDataToUpdate = { title, shortDescription, content, blogId, blogName };
+
+    const updated = postsRepo.update(req.params.id, postDataToUpdate);
     if (!updated) return res.sendStatus(HttpStatus.NOT_FOUND);
-    // Использование HttpStatus.NO_CONTENT
     res.sendStatus(HttpStatus.NO_CONTENT);
 };
 
 export const deletePost = (req: Request, res: Response) => {
     const deleted = postsRepo.delete(req.params.id);
-    // Использование HttpStatus.NOT_FOUND
     if (!deleted) return res.sendStatus(HttpStatus.NOT_FOUND);
-    // Использование HttpStatus.NO_CONTENT
     res.sendStatus(HttpStatus.NO_CONTENT);
 };
