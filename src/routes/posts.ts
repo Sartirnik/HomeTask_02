@@ -37,6 +37,9 @@ router.put(
 );
 
 // DELETE post by ID
-router.delete('/:id', basicAuth, deletePost);
+router.delete('/:id',
+    basicAuth,
+    deletePost
+);
 
 export default router;

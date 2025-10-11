@@ -95,7 +95,7 @@ export const createPost = (req: Request<{}, {}, Post>, res: Response) => {
     res.status(HttpStatus.CREATED).send(newPost);
 };
 
-export const updatePost = (req: Request<{id: string}, {}, Post>, res: Response) => {
+export const updatePost = (req: Request<{id: string}, {}, Post & { blogName?: string }>, res: Response) => {
     const { title, shortDescription, content, blogId } = req.body;
 
     let blogName = req.body.blogName; // Начинаем с того, что пришло в теле запроса
